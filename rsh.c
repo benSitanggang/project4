@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <signal.h>
 
 #define N 13
 
@@ -30,14 +31,14 @@ void sendmsg (char *user, char *target, char *msg) {
 	// TODO:
 	// Send a request to the server to send the message (msg) to the target user (target)
 	// by creating the message structure and writing it to server's FIFO
+	struct message outgoing;
+	strcpy(outgoing.source, user);
+	strcpy(outgoing.target, target);
+	strcpy(outgoing.msg, msg);
 
-
-
-
-
-
-
-
+	int clientFD = open("serverFIFO", O_WRONLY);
+	write(clientFD, &outgoing, sizeof(struct message));
+	close(clientFD);
 }
 
 void* messageListener(void *arg) {
@@ -48,10 +49,18 @@ void* messageListener(void *arg) {
 	// following format
 	// Incoming message from [source]: [message]
 	// put an end of line at the end of the message
+	int client;
+	struct message incoming;
+	client = open(uName, O_RDONLY);
+	int dummyfd = open(uName, O_WRONLY);
+	while (1) {
+		read(client, &incoming, sizeof(struct message));
+		printf("Incoming message from %s: %s\n", incoming.source, incoming.msg);
+	}
 
 
-
-
+	close(client);
+	close(dummyfd);
 
 
 	pthread_exit((void*)0);
@@ -69,6 +78,7 @@ int isAllowed(const char*cmd) {
 
 int main(int argc, char **argv) {
     pid_t pid;
+	pthread_t tid;
     char **cargv; 
     char *path;
     char line[256];
@@ -85,10 +95,8 @@ int main(int argc, char **argv) {
 
     // TODO:
     // create the message listener thread
-
-
-
-
+	pthread_create(&tid, NULL, messageListener, NULL);
+	// sendmsg(uName, "user2", "hello world");
 
     while (1) {
 
@@ -121,15 +129,21 @@ int main(int argc, char **argv) {
 
 		// if no argument is specified, you should print the following
 		// printf("sendmsg: you have to specify target user\n");
+		
+		char* target = strtok(NULL, " "); 
+		if (target == NULL) {
+			printf("sendmsg: you have to specify target user\n");
+			continue;
+		}
 		// if no message is specified, you should print the followingA
  		// printf("sendmsg: you have to enter a message\n");
+		char* message = strtok(NULL, "");
+		if (message == NULL) {
+			printf("sendmsg: you have to enter a message\n");
+			continue;
+		}
 
-
-
-
-
-
-
+		sendmsg(uName, target, message);
 
 
 
